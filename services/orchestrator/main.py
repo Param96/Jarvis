@@ -7,7 +7,17 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("OrchestratorAPI")
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="Jarvis Cloud Orchestrator", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow dashboard to connect
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 orchestrator = AIOrchestrator()
 
@@ -15,6 +25,7 @@ class TaskRequest(BaseModel):
     intent: str
     device_id: str
     context: Optional[dict] = None
+    model_override: Optional[str] = None
 
 # A simple dependency to verify internal microservice requests
 # In production, this would validate a service-to-service JWT
@@ -38,7 +49,8 @@ async def orchestrate_task(request: TaskRequest, token: str = Depends(verify_int
     result = await orchestrator.route_task(
         device_id=request.device_id,
         intent=request.intent,
-        context=request.context
+        context=request.context,
+        model_override=request.model_override
     )
     
     return result
