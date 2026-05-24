@@ -1,0 +1,11 @@
+openwakeword
+pyaudio
+numpy
+SpeechRecognition
+fastapi
+uvicorn
+websockets
+httpx
+pytest
+pytest-asyncio
+faster-whisper

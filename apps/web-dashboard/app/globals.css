@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+}
+
+body {
+  background-color: #050505;
+  color: #f3f4f6;
+  font-family: monospace, sans-serif;
+}

@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+venv/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Databases & local data files
+data/jarvis.sqlite3
+data/memory/
+
+# Node.js
+node_modules/
+dist/
+.vite-temp/
+.next/
+.vite/
+.turbo/
+
+# IDE files
+.vscode/
