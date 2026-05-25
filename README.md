@@ -6,6 +6,7 @@ Jarvis is a project with a backend API and various microservices including authe
 
 - Docker and Docker Compose
 - Python 3.9+ (for running the standalone listener)
+- System package `portaudio19-dev` for audio processing dependencies like PyAudio (install via `sudo apt-get install -y portaudio19-dev`)
 
 ## Running the Services
 
@@ -44,4 +45,18 @@ You can run the FastAPI app directly:
 
 ```bash
 python app.py
+```
+
+## Running Tests
+
+You can run tests from the root directory using:
+
+```bash
+PYTHONPATH=. pytest
+```
+
+or
+
+```bash
+python -m pytest
 ```
