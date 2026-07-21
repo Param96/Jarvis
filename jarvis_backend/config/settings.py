@@ -30,13 +30,14 @@ class Settings(BaseModel):
     speech_timeout_seconds: float = 5.0
     phrase_time_limit_seconds: float = 15.0
 
-    stt_provider: Literal["speech_recognition", "faster_whisper"] = "speech_recognition"
+    stt_provider: Literal["speech_recognition", "faster_whisper"] = "faster_whisper"
     faster_whisper_model: str = "base.en"
     tts_provider: Literal["system", "piper", "kokoro", "disabled"] = "system"
     piper_voice_path: Path | None = None
 
-    memory_backend: Literal["sqlite", "chromadb"] = "sqlite"
+    memory_backend: Literal["sqlite", "chromadb", "pgvector"] = "sqlite"
     chroma_path: Path = Path("data/memory/chroma")
+    postgres_dsn: str = "postgresql://jarvis_admin:jarvis_password@localhost:5432/jarvis_db"
     memory_top_k: int = 5
 
     local_model_provider: Literal["ollama", "openai_compatible", "disabled"] = "ollama"
@@ -46,6 +47,8 @@ class Settings(BaseModel):
     cloud_model_name: str = "gpt-4.1"
     cloud_model_base_url: str | None = None
     cloud_api_key: str | None = None
+    fallback_api_key: str | None = None
+    cloud_coding_model_name: str | None = None
 
     local_max_prompt_chars: int = 1800
     cloud_reasoning_keywords: list[str] = Field(
@@ -57,6 +60,23 @@ class Settings(BaseModel):
             "complex",
             "research",
             "write code",
+        ]
+    )
+    cloud_coding_keywords: list[str] = Field(
+        default_factory=lambda: [
+            "code",
+            "python",
+            "script",
+            "function",
+            "debug",
+            "refactor",
+            "algorithm",
+            "html",
+            "css",
+            "javascript",
+            "typescript",
+            "react",
+            "api"
         ]
     )
 

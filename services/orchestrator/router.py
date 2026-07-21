@@ -45,9 +45,33 @@ class AIOrchestrator:
         
         response_text = ""
         
-        if target_model == "GPT-4o":
-            logger.info("Executing via Cloud LLM (GPT-4o)...")
-            response_text = "I have analyzed your request and routed it to GPT-4o for complex cloud processing."
+        if target_model == "GPT-4o" or target_model.startswith("OpenRouter"):
+            logger.info("Executing via Cloud LLM (OpenRouter)...")
+            openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
+            try:
+                res = requests.post(
+                    url="https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {openrouter_key}",
+                    },
+                    json={
+                        "model": "openrouter/free",
+                        "messages": [
+                            {"role": "system", "content": "You are Jarvis, an advanced AI assistant. Reply concisely in 1-2 short sentences."},
+                            {"role": "user", "content": intent}
+                        ]
+                    },
+                    timeout=30
+                )
+                if res.status_code == 200:
+                    response_text = res.json()["choices"][0]["message"]["content"]
+                    target_model = "OpenRouter (Free Auto)"
+                else:
+                    logger.error(f"OpenRouter error: {res.status_code} {res.text}")
+                    response_text = "My cloud connection to OpenRouter encountered an error."
+            except Exception as e:
+                logger.error(f"Failed to connect to OpenRouter: {e}")
+                response_text = "I cannot reach the cloud reasoning engine right now."
         else:
             logger.info(f"Executing via lightweight local model ({target_model})...")
             try:

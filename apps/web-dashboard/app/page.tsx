@@ -3,9 +3,10 @@
 import { Shield, LayoutDashboard, Settings, Cpu, MemoryStick, Activity, Bot, Mic, MicOff, TerminalSquare, Search, AlertCircle, Volume2 } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { JarvisOrb, OrbState } from '../components/JarvisOrb';
+import { OrbState, JarvisOrb } from '../components/JarvisOrb';
+import { SettingsView } from '../components/SettingsView';
 
-type Tab = 'overview' | 'agent';
+type Tab = 'overview' | 'agent' | 'settings';
 
 export default function DashboardPage() {
   const [telemetry, setTelemetry] = useState<{ cpu: number; ram: number } | null>(null);
@@ -22,8 +23,10 @@ export default function DashboardPage() {
   const [micEnabled, setMicEnabled] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const backendWsRef = useRef<WebSocket | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
@@ -93,98 +96,83 @@ export default function DashboardPage() {
     };
     ws.onclose = () => setConnected(false);
 
-    // Setup Web Speech API
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
+    // Setup Backend WS
+    const backendWs = new WebSocket("ws://localhost:8000/ws");
+    backendWsRef.current = backendWs;
 
-        recognitionRef.current.onstart = () => {
-          setIsListening(true);
-          setErrorMsg(null);
-        };
-
-        recognitionRef.current.onresult = (event: any) => {
-          let interimTranscript = '';
-          let finalTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
-          }
-
-          const currentText = (finalTranscript || interimTranscript).trim().toLowerCase();
-          setInputText(currentText);
-
-          if (currentText.includes('jarvis')) {
-            setOrbState('listening');
-          }
-
-          if (finalTranscript) {
-            const lowerFinal = finalTranscript.toLowerCase();
-            if (lowerFinal.includes('jarvis')) {
-              const wakeIndex = lowerFinal.indexOf('jarvis');
-              const command = finalTranscript.substring(wakeIndex + 6).trim() || finalTranscript;
-              if (command.length > 0) {
-                handleCommandSubmit(undefined, command);
-              }
-            } else {
-              setInputText('');
-              setOrbState('idle');
-            }
-          }
-        };
-
-        recognitionRef.current.onerror = (event: any) => {
-          if (event.error !== 'no-speech') {
-            console.error("Speech recognition error", event.error);
-            setErrorMsg(`Microphone Error: ${event.error}. Please ensure mic permissions are granted.`);
-            setMicEnabled(false);
-            setIsListening(false);
-            setOrbState('idle');
-          }
-        };
-
-        recognitionRef.current.onend = () => {
-          setIsListening(false);
-          // Only auto-restart if no error occurred
-          if (micEnabled && !errorMsg) {
-            try {
-              recognitionRef.current?.start();
-            } catch (e) {}
-          }
-        };
-      } else {
-        setErrorMsg("Your browser does not support Speech Recognition. Try Chrome or Edge.");
-      }
-    }
+    backendWs.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "conversation.transcript") {
+          setInputText(data.payload.text);
+          setOrbState('thinking');
+        } else if (data.type === "conversation.done") {
+          setTranscript(prev => [...prev, { role: 'assistant', text: data.payload.response }]);
+          speakResponse(data.payload.response);
+          setOrbState('idle');
+          setInputText('');
+        } else if (data.type === "error") {
+          setErrorMsg(data.payload.message);
+          setOrbState('idle');
+        }
+      } catch (e) {}
+    };
 
     return () => {
       ws.close();
-      if (recognitionRef.current) recognitionRef.current.stop();
+      backendWs.close();
       if (synthRef.current) synthRef.current.cancel();
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      }
     };
-  }, [micEnabled, errorMsg]);
+  }, []);
 
-  const toggleMic = () => {
-    const newState = !micEnabled;
-    setMicEnabled(newState);
-    setErrorMsg(null);
-    if (newState) {
-      try {
-        recognitionRef.current?.start();
-      } catch (e) {
-        console.error(e);
+  const toggleMic = async () => {
+    if (micEnabled) {
+      // Turn OFF mic: Stop recording and send the Blob
+      setMicEnabled(false);
+      setIsListening(false);
+      setOrbState('idle');
+      
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
       }
     } else {
-      recognitionRef.current?.stop();
-      setOrbState('idle');
-      setInputText('');
+      // Turn ON mic: Start recording
+      setErrorMsg(null);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          if (backendWsRef.current?.readyState === WebSocket.OPEN) {
+            setOrbState('thinking');
+            backendWsRef.current.send(audioBlob);
+          }
+        };
+
+        mediaRecorder.start();
+        setMicEnabled(true);
+        setIsListening(true);
+        setOrbState('listening');
+      } catch (err: any) {
+        console.error("Mic error:", err);
+        setErrorMsg(`Microphone Error: ${err.message}. Please ensure mic permissions are granted.`);
+        setMicEnabled(false);
+        setIsListening(false);
+      }
     }
   };
 
@@ -263,7 +251,7 @@ export default function DashboardPage() {
 
           <div className="my-2 border-b border-jarvis-border/50"></div>
 
-          <button className="flex items-center gap-3 px-3 py-2 text-jarvis-textMuted hover:text-jarvis-text hover:bg-jarvis-border/30 rounded transition-colors">
+          <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-3 px-3 py-2 rounded transition-colors ${activeTab === 'settings' ? 'bg-jarvis-cyan/10 text-jarvis-cyan border border-jarvis-cyan/30' : 'text-jarvis-textMuted hover:text-jarvis-text hover:bg-jarvis-border/30 border border-transparent'}`}>
             <Settings size={18} /><span>Settings</span>
           </button>
         </nav>
@@ -297,6 +285,8 @@ export default function DashboardPage() {
               <span className="text-sm tracking-wide">{errorMsg}</span>
             </motion.div>
           )}
+
+
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
@@ -412,7 +402,7 @@ export default function DashboardPage() {
                       type="text" 
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
-                      placeholder={micEnabled ? 'Say "Jarvis" followed by your command...' : "Click the mic to enable continuous listening..."} 
+                      placeholder={micEnabled ? 'Speak your command, then click the mic to stop recording...' : "Click the mic to record a voice command..."} 
                       className="w-full bg-jarvis-bg border border-jarvis-border rounded-full py-3 pl-12 pr-6 focus:outline-none focus:border-jarvis-cyan/50 text-white placeholder-jarvis-textMuted"
                     />
                   </div>
@@ -429,7 +419,7 @@ export default function DashboardPage() {
                       <option value="llama3.2:latest">Ollama: llama3.2</option>
                       <option value="qwen2.5-coder:3b">Ollama: qwen2.5-coder</option>
                       <option value="qwen2.5:7b">Ollama: qwen2.5:7b</option>
-                      <option value="GPT-4o">Cloud: GPT-4o</option>
+                      <option value="GPT-4o">Cloud: OpenRouter (Auto Free)</option>
                     </select>
 
                     <div className="flex items-center gap-2 px-4 py-2 border border-jarvis-border rounded-full text-xs text-jarvis-cyan tracking-widest bg-jarvis-cyan/5">
@@ -440,6 +430,12 @@ export default function DashboardPage() {
                 </form>
               </div>
 
+            </motion.div>
+          )}
+
+          {activeTab === 'settings' && (
+            <motion.div key="settings" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="absolute inset-0">
+              <SettingsView />
             </motion.div>
           )}
 

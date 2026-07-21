@@ -9,3 +9,9 @@ httpx
 pytest
 pytest-asyncio
 faster-whisper
+asyncpg
+pgvector
+openai
+duckduckgo-search
+faster-whisper
+pydub

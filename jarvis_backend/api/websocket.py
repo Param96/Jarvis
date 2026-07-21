@@ -59,7 +59,30 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     await websocket.send_json({"type": "system.connected", "payload": {"message": "Connected to Jarvis."}})
     try:
         while True:
-            raw = await websocket.receive_text()
+            message = await websocket.receive()
+            
+            if "bytes" in message:
+                audio_data = message["bytes"]
+                try:
+                    transcript = await container.stt.transcribe_buffer(audio_data)
+                    if transcript and transcript.strip():
+                        # The user just spoke this text! Handle it as if they typed it.
+                        request = ConversationRequest(
+                            text=transcript,
+                            session_id="voice-session",
+                        )
+                        # Optionally echo back what was heard
+                        await websocket.send_json({"type": "conversation.transcript", "payload": {"text": transcript}})
+                        
+                        response = await container.conversation.handle_text(request.text, request.session_id)
+                        await websocket.send_json({"type": "conversation.done", "payload": response.model_dump()})
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"STT Error: {e}")
+                    await websocket.send_json({"type": "error", "payload": {"message": f"Transcription failed: {e}"}})
+                    
+            elif "text" in message:
+                raw = message["text"]
             data = json.loads(raw)
             message_type = data.get("type")
             if message_type == "conversation.text":
