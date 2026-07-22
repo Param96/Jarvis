@@ -193,37 +193,18 @@ export default function DashboardPage() {
     setTranscript(prev => [...prev, { role: 'user', text: command }]);
     
     try {
-      const res = await fetch('http://localhost:8002/api/v1/orchestrate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-token': 'internal-service-secret'
-        },
-        body: JSON.stringify({
-          intent: command,
-          device_id: 'local-dev-machine-001',
-          model_override: selectedModel
-        })
-      });
-      
-      if (!res.ok) throw new Error("Orchestrator failed to respond.");
-      
-      const data = await res.json();
-      
-      // Update Model Indicator
-      if (data.destination === 'local') {
-        setActiveModel("Ollama (qwen2.5-coder:3b)");
+      if (backendWsRef.current?.readyState === WebSocket.OPEN) {
+        backendWsRef.current.send(JSON.stringify({
+          type: "conversation.text",
+          text: command,
+          session_id: "web-dashboard"
+        }));
       } else {
-        setActiveModel("GPT-4o (Cloud)");
+        throw new Error("WebSocket disconnected.");
       }
-
-      // Update transcript with the response
-      setTranscript(prev => [...prev, { role: 'assistant', text: data.response }]);
-      speakResponse(data.response);
-      
     } catch (err) {
       console.error(err);
-      setTranscript(prev => [...prev, { role: 'system', text: "Error: Could not reach Cloud Orchestrator." }]);
+      setTranscript(prev => [...prev, { role: 'system', text: "Error: Could not reach Swarm Backend." }]);
       setOrbState('idle');
     }
   };
