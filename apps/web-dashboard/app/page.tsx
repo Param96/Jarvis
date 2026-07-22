@@ -107,7 +107,7 @@ export default function DashboardPage() {
           setInputText(data.payload.text);
           setOrbState('thinking');
         } else if (data.type === "conversation.done") {
-          setTranscript(prev => [...prev, { role: 'assistant', text: data.payload.text }]);
+          setTranscript(prev => [...prev, { role: data.payload.model === 'system' ? 'system' : 'assistant', text: data.payload.text }]);
           speakResponse(data.payload.text);
           setInputText('');
         } else if (data.type === "error") {
@@ -359,7 +359,7 @@ export default function DashboardPage() {
                 <div className="h-48 p-6 overflow-y-auto flex flex-col gap-3 font-sans">
                   {transcript.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`px-4 py-2 rounded-lg max-w-[80%] ${msg.role === 'user' ? 'bg-jarvis-border text-white' : msg.role === 'system' ? 'text-jarvis-textMuted text-sm italic' : 'bg-jarvis-cyan/10 border border-jarvis-cyan/30 text-jarvis-cyan'}`}>
+                      <div className={`whitespace-pre-wrap px-4 py-2 rounded-lg max-w-[80%] ${msg.role === 'user' ? 'bg-jarvis-border text-white' : msg.role === 'system' ? 'text-jarvis-textMuted text-sm' : 'bg-jarvis-cyan/10 border border-jarvis-cyan/30 text-jarvis-cyan'}`}>
                         {msg.text}
                       </div>
                     </div>

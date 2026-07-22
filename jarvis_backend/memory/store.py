@@ -21,6 +21,9 @@ class MemoryStore(Protocol):
     async def add_message(self, session_id: str, message: Message) -> None:
         """Persist a message."""
 
+    async def clear_messages(self, session_id: str) -> None:
+        """Clear all messages in a session."""
+
     async def recent_messages(self, session_id: str, limit: int = 12) -> list[Message]:
         """Return recent short-term memory."""
 
@@ -105,6 +108,14 @@ class SQLiteMemoryStore:
     async def add_message(self, session_id: str, message: Message) -> None:
         async with self._lock:
             await asyncio.to_thread(self._add_message_sync, session_id, message)
+
+    async def clear_messages(self, session_id: str) -> None:
+        async with self._lock:
+            await asyncio.to_thread(self._clear_messages_sync, session_id)
+
+    def _clear_messages_sync(self, session_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
 
     def _add_message_sync(self, session_id: str, message: Message) -> None:
         with self._connect() as conn:

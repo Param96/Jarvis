@@ -80,19 +80,58 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     import logging
                     logging.getLogger(__name__).error(f"STT Error: {e}")
                     await websocket.send_json({"type": "error", "payload": {"message": f"Transcription failed: {e}"}})
+                continue
                     
             elif "text" in message:
                 raw = message["text"]
             data = json.loads(raw)
             message_type = data.get("type")
             if message_type == "conversation.text":
-                request = ConversationRequest(
-                    text=str(data.get("text", "")),
-                    session_id=data.get("session_id"),
-                    metadata=data.get("metadata", {}),
-                )
-                response = await container.conversation.handle_text(request.text, request.session_id)
-                await websocket.send_json({"type": "conversation.done", "payload": response.model_dump()})
+                text = str(data.get("text", "")).strip()
+                session_id = data.get("session_id")
+                
+                if text.startswith("/"):
+                    parts = text.split(" ")
+                    cmd = parts[0].lower()
+                    args = parts[1:]
+                    
+                    system_response = "Unknown command. Type `/help` to see available commands."
+                    if cmd == "/help":
+                        system_response = "### Available Commands\n\n- `/help`: Show this message\n- `/skills`: List all loaded agent skills\n- `/model <name>`: Switch the active model in memory\n- `/clear`: Clear the active session's memory"
+                    elif cmd == "/skills":
+                        skills = container.swarm.skill_loader.list_skills()
+                        system_response = "### Loaded Skills\n\n" + "\n".join([f"- **{s.name}**: {s.description}" for s in skills])
+                    elif cmd == "/model":
+                        if args:
+                            new_model = args[0]
+                            for agent in container.swarm.agents.values():
+                                agent.model.model_name = new_model
+                            system_response = f"Model switched to `{new_model}` for the current session."
+                        else:
+                            system_response = "Usage: `/model <model_name>`"
+                    elif cmd == "/clear":
+                        if session_id:
+                            await container.memory.clear_messages(session_id)
+                            system_response = "Context memory has been cleared for this session."
+                        else:
+                            system_response = "No active session ID provided."
+                    
+                    response_payload = {
+                        "text": system_response,
+                        "session_id": session_id or "",
+                        "model": "system",
+                        "used_tools": [],
+                        "memories": []
+                    }
+                    await websocket.send_json({"type": "conversation.done", "payload": response_payload})
+                else:
+                    request = ConversationRequest(
+                        text=text,
+                        session_id=session_id,
+                        metadata=data.get("metadata", {}),
+                    )
+                    response = await container.conversation.handle_text(request.text, request.session_id)
+                    await websocket.send_json({"type": "conversation.done", "payload": response.model_dump()})
             elif message_type == "control.interrupt":
                 await container.tts.stop()
                 await websocket.send_json({"type": "control.interrupted", "payload": {}})

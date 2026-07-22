@@ -123,6 +123,10 @@ class PgVectorMemoryStore:
                 message.created_at, session_id
             )
 
+    async def clear_messages(self, session_id: str) -> None:
+        async with self.pool.acquire() as conn:
+            await conn.execute("DELETE FROM messages WHERE session_id = $1", session_id)
+
     async def recent_messages(self, session_id: str, limit: int = 12) -> list[Message]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
