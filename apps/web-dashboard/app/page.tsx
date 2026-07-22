@@ -107,9 +107,8 @@ export default function DashboardPage() {
           setInputText(data.payload.text);
           setOrbState('thinking');
         } else if (data.type === "conversation.done") {
-          setTranscript(prev => [...prev, { role: 'assistant', text: data.payload.response }]);
-          speakResponse(data.payload.response);
-          setOrbState('idle');
+          setTranscript(prev => [...prev, { role: 'assistant', text: data.payload.text }]);
+          speakResponse(data.payload.text);
           setInputText('');
         } else if (data.type === "error") {
           setErrorMsg(data.payload.message);
