@@ -5,7 +5,10 @@ from fastapi import APIRouter, Depends
 from jarvis_backend.api.dependencies import get_container
 from jarvis_backend.app.container import Container
 import time
-from jarvis_backend.schemas.conversation import ConversationRequest, ConversationResponse
+from jarvis_backend.schemas.conversation import (
+    ConversationRequest,
+    ConversationResponse,
+)
 from jarvis_backend.schemas.settings import SettingsUpdatePayload, SettingsResponse
 from pathlib import Path
 
@@ -39,11 +42,14 @@ async def conversation(
 
 
 @router.get("/settings", response_model=SettingsResponse)
-async def get_settings(container: Container = Depends(get_container)) -> SettingsResponse:
+async def get_settings(
+    container: Container = Depends(get_container),
+) -> SettingsResponse:
     def mask_key(key: str | None) -> str | None:
-        if not key: return None
+        if not key:
+            return None
         return key[:4] + "*" * (len(key) - 8) + key[-4:] if len(key) > 8 else "***"
-        
+
     return SettingsResponse(
         cloud_api_key_masked=mask_key(container.settings.cloud_api_key),
         fallback_api_key_masked=mask_key(container.settings.fallback_api_key),
@@ -60,13 +66,12 @@ async def get_settings(container: Container = Depends(get_container)) -> Setting
 
 @router.post("/settings", response_model=SettingsResponse)
 async def update_settings(
-    payload: SettingsUpdatePayload,
-    container: Container = Depends(get_container)
+    payload: SettingsUpdatePayload, container: Container = Depends(get_container)
 ) -> SettingsResponse:
     env_path = Path(".env")
     env_content = env_path.read_text() if env_path.exists() else ""
     lines = env_content.splitlines()
-    
+
     updates = {}
     if payload.cloud_api_key is not None:
         updates["JARVIS_CLOUD_API_KEY"] = payload.cloud_api_key
@@ -79,7 +84,9 @@ async def update_settings(
     if payload.local_model_name is not None:
         updates["JARVIS_LOCAL_MODEL_NAME"] = payload.local_model_name
     if payload.wake_word_enabled is not None:
-        updates["JARVIS_WAKE_WORD_ENABLED"] = "true" if payload.wake_word_enabled else "false"
+        updates["JARVIS_WAKE_WORD_ENABLED"] = (
+            "true" if payload.wake_word_enabled else "false"
+        )
     if payload.tts_provider is not None:
         updates["JARVIS_TTS_PROVIDER"] = payload.tts_provider
     if payload.local_model_provider is not None:
@@ -88,7 +95,7 @@ async def update_settings(
         updates["JARVIS_CLOUD_MODEL_PROVIDER"] = payload.cloud_model_provider
     if payload.cloud_model_base_url is not None:
         updates["JARVIS_CLOUD_MODEL_BASE_URL"] = payload.cloud_model_base_url
-        
+
     new_lines = []
     updated_keys = set()
     for line in lines:
@@ -101,21 +108,26 @@ async def update_settings(
                 new_lines.append(line)
         else:
             new_lines.append(line)
-            
+
     for key, value in updates.items():
         if key not in updated_keys:
             new_lines.append(f"{key}={value}")
-            
+
     env_path.write_text("\n".join(new_lines) + "\n")
     return await get_settings(container)
 
 
-@router.get('/stats')
+@router.get("/stats")
 async def get_stats(container: Container = Depends(get_container)):
     from jarvis_backend.schemas.settings import SystemStatsResponse
+
     s = container.settings
     return SystemStatsResponse(
-        active_model=s.cloud_model_name if s.cloud_model_provider != 'disabled' else s.local_model_name,
+        active_model=(
+            s.cloud_model_name
+            if s.cloud_model_provider != "disabled"
+            else s.local_model_name
+        ),
         cloud_provider=s.cloud_model_provider,
         local_provider=s.local_model_provider,
         agents_registered=len(container.swarm._agents),
@@ -124,5 +136,5 @@ async def get_stats(container: Container = Depends(get_container)):
         tts_provider=s.tts_provider,
         wake_word_enabled=s.wake_word_enabled,
         memory_backend=s.memory_backend,
-        uptime_seconds=time.time() - _start_time
+        uptime_seconds=time.time() - _start_time,
     )

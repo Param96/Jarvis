@@ -31,7 +31,10 @@ class AudioPipeline(Service):
             await self._bus.publish(
                 Event(
                     type=EventType.STATE_CHANGED,
-                    payload={"state": AssistantState.IDLE, "task": "Waiting for 'Hey Jarvis'"},
+                    payload={
+                        "state": AssistantState.IDLE,
+                        "task": "Waiting for 'Hey Jarvis'",
+                    },
                 )
             )
 
@@ -52,7 +55,10 @@ class AudioPipeline(Service):
             except Exception as exc:
                 self._logger.exception("audio_pipeline_failed")
                 await self._bus.publish(
-                    Event(type=EventType.ERROR, payload={"source": "audio", "error": str(exc)})
+                    Event(
+                        type=EventType.ERROR,
+                        payload={"source": "audio", "error": str(exc)},
+                    )
                 )
                 await asyncio.sleep(2)
 
@@ -78,33 +84,50 @@ class AudioPipeline(Service):
             frames_per_buffer=self._settings.audio_chunk_size,
         )
         try:
-            self._threadsafe_event(EventType.STATE_CHANGED, {"state": AssistantState.IDLE})
+            self._threadsafe_event(
+                EventType.STATE_CHANGED, {"state": AssistantState.IDLE}
+            )
             while self._running.is_set():
-                data = stream.read(self._settings.audio_chunk_size, exception_on_overflow=False)
+                data = stream.read(
+                    self._settings.audio_chunk_size, exception_on_overflow=False
+                )
                 frame = np.frombuffer(data, dtype=np.int16)
                 model.predict(frame)
                 for name in model.prediction_buffer.keys():
                     score = list(model.prediction_buffer[name])[-1]
                     if score < self._settings.wake_word_threshold:
                         continue
-                    self._threadsafe_event(EventType.WAKE_WORD_DETECTED, {"name": name, "score": score})
+                    self._threadsafe_event(
+                        EventType.WAKE_WORD_DETECTED, {"name": name, "score": score}
+                    )
                     self._threadsafe_event(
                         EventType.STATE_CHANGED,
-                        {"state": AssistantState.LISTENING, "task": "Wake word detected. Listening..."},
+                        {
+                            "state": AssistantState.LISTENING,
+                            "task": "Wake word detected. Listening...",
+                        },
                     )
                     stream.stop_stream()
                     try:
                         transcript = self._capture_command(recognizer)
-                        self._threadsafe_event(EventType.USER_TRANSCRIPT, {"text": transcript})
+                        self._threadsafe_event(
+                            EventType.USER_TRANSCRIPT, {"text": transcript}
+                        )
                     except sr.WaitTimeoutError:
                         self._threadsafe_event(
                             EventType.STATE_CHANGED,
-                            {"state": AssistantState.IDLE, "task": "Listening timed out."},
+                            {
+                                "state": AssistantState.IDLE,
+                                "task": "Listening timed out.",
+                            },
                         )
                     except sr.UnknownValueError:
                         self._threadsafe_event(
                             EventType.STATE_CHANGED,
-                            {"state": AssistantState.IDLE, "task": "Could not understand audio."},
+                            {
+                                "state": AssistantState.IDLE,
+                                "task": "Could not understand audio.",
+                            },
                         )
                     finally:
                         model.reset()

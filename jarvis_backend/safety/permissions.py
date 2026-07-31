@@ -34,9 +34,13 @@ class PermissionService:
         """Ensure a path is within an allowed workspace root."""
 
         if not self._settings.allow_filesystem_tools:
-            raise PermissionDeniedError("File system tools are disabled by configuration.")
+            raise PermissionDeniedError(
+                "File system tools are disabled by configuration."
+            )
         resolved = path.expanduser().resolve()
-        roots = [root.expanduser().resolve() for root in self._settings.allowed_workspace_roots]
+        roots = [
+            root.expanduser().resolve()
+            for root in self._settings.allowed_workspace_roots
+        ]
         if not any(resolved == root or root in resolved.parents for root in roots):
             raise PermissionDeniedError(f"Path is outside allowed roots: {resolved}")
-

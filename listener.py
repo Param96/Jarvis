@@ -16,7 +16,9 @@ async def main() -> None:
     container = build_container(settings)
     await container.start()
     print("Jarvis listener is running. Press Ctrl+C to stop.")
-    await container.bus.publish(Event(type=EventType.SYSTEM_READY, payload={"mode": "listener"}))
+    await container.bus.publish(
+        Event(type=EventType.SYSTEM_READY, payload={"mode": "listener"})
+    )
     try:
         while True:
             await asyncio.sleep(3600)

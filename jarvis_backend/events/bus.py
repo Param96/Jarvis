@@ -42,4 +42,3 @@ class EventBus:
         for result in results:
             if isinstance(result, Exception):
                 self._logger.exception("event_subscriber_failed", exc_info=result)
-

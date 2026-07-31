@@ -30,7 +30,9 @@ class ConversationService:
     async def start(self) -> None:
         self._bus.subscribe(EventType.USER_TRANSCRIPT, self._on_user_transcript)
 
-    async def handle_text(self, text: str, session_id: str | None = None) -> ConversationResponse:
+    async def handle_text(
+        self, text: str, session_id: str | None = None
+    ) -> ConversationResponse:
         """Handle a text turn and stream progress through the event bus."""
 
         session = await self._memory.ensure_session(session_id)
@@ -52,17 +54,28 @@ class ConversationService:
         used_tools: list[str] = []
         if tool_result:
             used_tools.append(tool_result.name)
-            context.append(Message(role=Role.TOOL, content=tool_result.output, metadata={"tool": tool_result.name}))
-            
+            context.append(
+                Message(
+                    role=Role.TOOL,
+                    content=tool_result.output,
+                    metadata={"tool": tool_result.name},
+                )
+            )
+
             # Handle handoff tool explicitly
             if tool_result.name == "transfer_agent" and tool_result.metadata:
                 target_agent = tool_result.metadata.get("transfer_to")
                 if target_agent:
                     self._swarm.set_active_agent(session.id, target_agent)
-                    context.append(Message(role=Role.SYSTEM, content=f"Conversation transferred to {target_agent}"))
+                    context.append(
+                        Message(
+                            role=Role.SYSTEM,
+                            content=f"Conversation transferred to {target_agent}",
+                        )
+                    )
 
         active_agent = self._swarm.get_active_agent(session.id)
-        
+
         # In a real swarm, the LLM itself calls the tools via ReAct or native function calling.
         # For now, we simulate swarm triage by having the SwarmCoordinator natively route based on intent if it's the Triage agent.
         # If the user asks for code while in Triage, we transfer to Coder.
@@ -71,7 +84,12 @@ class ConversationService:
             if "code" in lowered or "python" in lowered or "script" in lowered:
                 self._swarm.set_active_agent(session.id, "CoderAgent")
                 active_agent = self._swarm.get_active_agent(session.id)
-                context.append(Message(role=Role.SYSTEM, content="Swarm Orchestrator auto-transferred request to CoderAgent for specialized handling."))
+                context.append(
+                    Message(
+                        role=Role.SYSTEM,
+                        content="Swarm Orchestrator auto-transferred request to CoderAgent for specialized handling.",
+                    )
+                )
                 used_tools.append("transfer_agent")
 
         chunks: list[str] = []
@@ -94,7 +112,9 @@ class ConversationService:
             metadata={"model": active_agent.model.name, "agent": active_agent.name},
         )
         await self._memory.add_message(session.id, assistant_message)
-        await self._memory.add_semantic_memory(f"User: {text}\nAssistant: {response_text}", {"session_id": session.id})
+        await self._memory.add_semantic_memory(
+            f"User: {text}\nAssistant: {response_text}", {"session_id": session.id}
+        )
 
         response = ConversationResponse(
             text=response_text,
@@ -104,13 +124,20 @@ class ConversationService:
             memories=memories,
         )
         await self._bus.publish(
-            Event(type=EventType.ASSISTANT_RESPONSE, session_id=session.id, payload=response.model_dump())
+            Event(
+                type=EventType.ASSISTANT_RESPONSE,
+                session_id=session.id,
+                payload=response.model_dump(),
+            )
         )
         await self._bus.publish(
             Event(
                 type=EventType.STATE_CHANGED,
                 session_id=session.id,
-                payload={"state": AssistantState.IDLE, "task": "Waiting for 'Hey Jarvis'"},
+                payload={
+                    "state": AssistantState.IDLE,
+                    "task": "Waiting for 'Hey Jarvis'",
+                },
             )
         )
         return response
@@ -124,12 +151,18 @@ class ConversationService:
         except Exception as exc:
             self._logger.exception("conversation_turn_failed")
             await self._bus.publish(
-                Event(type=EventType.ERROR, session_id=event.session_id, payload={"error": str(exc)})
+                Event(
+                    type=EventType.ERROR,
+                    session_id=event.session_id,
+                    payload={"error": str(exc)},
+                )
             )
 
-    def _build_context(self, session_id: str, text: str, recent: list[Message], memories: list[str]) -> list[Message]:
+    def _build_context(
+        self, session_id: str, text: str, recent: list[Message], memories: list[str]
+    ) -> list[Message]:
         base_system = self._swarm.get_agent_system_prompt(session_id)
-        
+
         system = (
             f"{base_system}\n\n"
             "You are Jarvis, a local-first AI operating system assistant. "
@@ -137,8 +170,14 @@ class ConversationService:
             "Use retrieved memory only when it is relevant."
         )
         if memories:
-            system += "\nRelevant long-term memory:\n" + "\n".join(f"- {memory}" for memory in memories)
-        return [Message(role=Role.SYSTEM, content=system), *recent, Message(role=Role.USER, content=text)]
+            system += "\nRelevant long-term memory:\n" + "\n".join(
+                f"- {memory}" for memory in memories
+            )
+        return [
+            Message(role=Role.SYSTEM, content=system),
+            *recent,
+            Message(role=Role.USER, content=text),
+        ]
 
     async def _maybe_run_builtin_tool(self, text: str):
         lowered = text.lower()

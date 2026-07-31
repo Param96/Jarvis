@@ -42,4 +42,3 @@ class AssistantState(StrEnum):
     PROCESSING = "PROCESSING"
     SPEAKING = "SPEAKING"
     ERROR = "ERROR"
-

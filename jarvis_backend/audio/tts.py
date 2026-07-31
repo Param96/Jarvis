@@ -71,4 +71,3 @@ class PiperTTS:
 
     async def stop(self) -> None:
         return None
-

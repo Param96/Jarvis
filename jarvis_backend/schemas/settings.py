@@ -3,6 +3,7 @@
 from pydantic import BaseModel
 from typing import Optional
 
+
 class SettingsUpdatePayload(BaseModel):
     cloud_api_key: Optional[str] = None
     fallback_api_key: Optional[str] = None
@@ -15,6 +16,7 @@ class SettingsUpdatePayload(BaseModel):
     cloud_model_provider: Optional[str] = None
     cloud_model_base_url: Optional[str] = None
 
+
 class SettingsResponse(BaseModel):
     cloud_api_key_masked: Optional[str] = None
     fallback_api_key_masked: Optional[str] = None
@@ -26,6 +28,7 @@ class SettingsResponse(BaseModel):
     local_model_provider: str
     cloud_model_provider: str
     cloud_model_base_url: Optional[str] = None
+
 
 class SystemStatsResponse(BaseModel):
     active_model: str

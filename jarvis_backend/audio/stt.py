@@ -33,16 +33,21 @@ class FasterWhisperSTT:
         if self._model is None:
             from faster_whisper import WhisperModel
 
-            self._model = WhisperModel(self._model_name, device="auto", compute_type="int8")
+            self._model = WhisperModel(
+                self._model_name, device="auto", compute_type="int8"
+            )
         segments, _ = self._model.transcribe(str(path), vad_filter=True)
         return " ".join(segment.text.strip() for segment in segments).strip()
 
     def _transcribe_buffer_sync(self, data: bytes) -> str:
         import io
+
         if self._model is None:
             from faster_whisper import WhisperModel
 
-            self._model = WhisperModel(self._model_name, device="auto", compute_type="int8")
+            self._model = WhisperModel(
+                self._model_name, device="auto", compute_type="int8"
+            )
         # Write to a temp file or use a BytesIO wrapper since faster-whisper accepts file-like objects for audio
         segments, _ = self._model.transcribe(io.BytesIO(data), vad_filter=True)
         return " ".join(segment.text.strip() for segment in segments).strip()
@@ -71,7 +76,7 @@ class SpeechRecognitionSTT:
 
     def _transcribe_buffer_sync(self, data: bytes) -> str:
         import io
+
         with self._sr.AudioFile(io.BytesIO(data)) as source:
             audio = self._recognizer.record(source)
         return self._recognizer.recognize_google(audio)
-

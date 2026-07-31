@@ -37,13 +37,17 @@ class Settings(BaseModel):
 
     memory_backend: Literal["sqlite", "chromadb", "pgvector"] = "sqlite"
     chroma_path: Path = Path("data/memory/chroma")
-    postgres_dsn: str = "postgresql://jarvis_admin:jarvis_password@localhost:5432/jarvis_db"
+    postgres_dsn: str = (
+        "postgresql://jarvis_admin:jarvis_password@localhost:5432/jarvis_db"
+    )
     memory_top_k: int = 5
 
     local_model_provider: Literal["ollama", "openai_compatible", "disabled"] = "ollama"
     local_model_name: str = "llama3.2"
     local_model_base_url: str = "http://localhost:11434"
-    cloud_model_provider: Literal["openai", "openai_compatible", "disabled"] = "disabled"
+    cloud_model_provider: Literal["openai", "openai_compatible", "disabled"] = (
+        "disabled"
+    )
     cloud_model_name: str = "gpt-4.1"
     cloud_model_base_url: str | None = None
     cloud_api_key: str | None = None
@@ -76,7 +80,7 @@ class Settings(BaseModel):
             "javascript",
             "typescript",
             "react",
-            "api"
+            "api",
         ]
     )
 
@@ -92,7 +96,9 @@ class Settings(BaseModel):
         for field_name, field in self.__class__.model_fields.items():
             env_name = f"JARVIS_{field_name.upper()}"
             if env_name in env_data:
-                merged[field_name] = _parse_env_value(env_data[env_name], field.annotation)
+                merged[field_name] = _parse_env_value(
+                    env_data[env_name], field.annotation
+                )
         merged.update(data)
         super().__init__(**merged)
 

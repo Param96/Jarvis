@@ -50,6 +50,8 @@ class BackgroundTaskQueue(Service):
             try:
                 await task.run()
             except Exception:
-                self._logger.exception("background_task_failed", extra={"task": task.name, "id": task.id})
+                self._logger.exception(
+                    "background_task_failed", extra={"task": task.name, "id": task.id}
+                )
             finally:
                 self._queue.task_done()

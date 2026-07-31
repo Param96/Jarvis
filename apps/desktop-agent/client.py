@@ -13,6 +13,7 @@ DEVICE_ID = os.getenv("JARVIS_DEVICE_ID", "local-dev-machine-001")
 AUTH_TOKEN = os.getenv("JARVIS_AUTH_TOKEN", "placeholder-jwt")
 RELAY_WS_URL = f"ws://localhost:8001/ws/agent/{DEVICE_ID}?token={AUTH_TOKEN}"
 
+
 async def stream_telemetry(ws):
     """Continuously stream local hardware metrics up the tunnel."""
     try:
@@ -25,7 +26,7 @@ async def stream_telemetry(ws):
                 "metrics": {
                     "cpu": cpu,
                     "ram": ram,
-                }
+                },
             }
             await ws.send(json.dumps(payload))
             await asyncio.sleep(2)  # Stream every 2 seconds
@@ -34,6 +35,7 @@ async def stream_telemetry(ws):
     except Exception as e:
         logger.error(f"Telemetry stream error: {e}")
 
+
 async def connect_to_relay():
     retry_delay = 2
     while True:
@@ -41,13 +43,17 @@ async def connect_to_relay():
             logger.info(f"Connecting to Cloud Relay at {RELAY_WS_URL}...")
             async with websockets.connect(RELAY_WS_URL) as ws:
                 logger.info("Connected to Relay! Awaiting commands...")
-                retry_delay = 2 
-                
-                await ws.send(json.dumps({
-                    "event": "device_ready",
-                    "device_id": DEVICE_ID,
-                    "status": "online"
-                }))
+                retry_delay = 2
+
+                await ws.send(
+                    json.dumps(
+                        {
+                            "event": "device_ready",
+                            "device_id": DEVICE_ID,
+                            "status": "online",
+                        }
+                    )
+                )
 
                 # Start background telemetry task
                 telemetry_task = asyncio.create_task(stream_telemetry(ws))
@@ -58,26 +64,31 @@ async def connect_to_relay():
                         # We ignore regular acks for logging cleanliness now
                         if payload.get("event") == "ack":
                             continue
-                            
+
                         logger.info(f"Received Command payload: {payload}")
-                        
+
                         action = payload.get("action")
                         if action == "execute_shell":
                             command_args = payload.get("args", [])
                             result = execute_safe_command(command_args)
-                            await ws.send(json.dumps({
-                                "event": "command_result",
-                                "request_id": payload.get("request_id"),
-                                "result": result
-                            }))
+                            await ws.send(
+                                json.dumps(
+                                    {
+                                        "event": "command_result",
+                                        "request_id": payload.get("request_id"),
+                                        "result": result,
+                                    }
+                                )
+                            )
                 finally:
                     telemetry_task.cancel()
-                        
+
         except Exception as e:
             logger.error(f"Connection lost: {e}")
             logger.info(f"Retrying in {retry_delay} seconds...")
             await asyncio.sleep(retry_delay)
             retry_delay = min(retry_delay * 2, 60)
+
 
 if __name__ == "__main__":
     try:

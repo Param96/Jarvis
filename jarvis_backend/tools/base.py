@@ -32,4 +32,3 @@ class Tool(ABC):
     @abstractmethod
     async def run(self, arguments: dict[str, Any]) -> ToolResult:
         """Execute the tool."""
-

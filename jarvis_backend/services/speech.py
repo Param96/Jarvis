@@ -30,11 +30,15 @@ class SpeechService:
                 payload={"state": AssistantState.SPEAKING, "task": "Speaking"},
             )
         )
-        await self._bus.publish(Event(type=EventType.TTS_STARTED, session_id=event.session_id))
+        await self._bus.publish(
+            Event(type=EventType.TTS_STARTED, session_id=event.session_id)
+        )
         try:
             await self._tts.speak(text)
         finally:
-            await self._bus.publish(Event(type=EventType.TTS_FINISHED, session_id=event.session_id))
+            await self._bus.publish(
+                Event(type=EventType.TTS_FINISHED, session_id=event.session_id)
+            )
 
     async def _on_interrupt(self, event: Event) -> None:
         await self._tts.stop()

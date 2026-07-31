@@ -59,8 +59,7 @@ class SQLiteMemoryStore:
 
     def _initialize_sync(self) -> None:
         with self._connect() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS sessions (
                     id TEXT PRIMARY KEY,
                     title TEXT,
@@ -82,8 +81,7 @@ class SQLiteMemoryStore:
                     metadata TEXT NOT NULL DEFAULT '{}',
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 );
-                """
-            )
+                """)
 
     async def ensure_session(self, session_id: str | None = None) -> Session:
         session = Session(id=session_id) if session_id else Session()
@@ -93,7 +91,9 @@ class SQLiteMemoryStore:
 
     def _ensure_session_sync(self, session: Session) -> None:
         with self._connect() as conn:
-            existing = conn.execute("SELECT id FROM sessions WHERE id = ?", (session.id,)).fetchone()
+            existing = conn.execute(
+                "SELECT id FROM sessions WHERE id = ?", (session.id,)
+            ).fetchone()
             if existing:
                 conn.execute(
                     "UPDATE sessions SET updated_at = ? WHERE id = ?",
@@ -102,7 +102,12 @@ class SQLiteMemoryStore:
                 return
             conn.execute(
                 "INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                (session.id, session.title, session.created_at.isoformat(), session.updated_at.isoformat()),
+                (
+                    session.id,
+                    session.title,
+                    session.created_at.isoformat(),
+                    session.updated_at.isoformat(),
+                ),
             )
 
     async def add_message(self, session_id: str, message: Message) -> None:
@@ -140,7 +145,9 @@ class SQLiteMemoryStore:
 
     async def recent_messages(self, session_id: str, limit: int = 12) -> list[Message]:
         async with self._lock:
-            return await asyncio.to_thread(self._recent_messages_sync, session_id, limit)
+            return await asyncio.to_thread(
+                self._recent_messages_sync, session_id, limit
+            )
 
     def _recent_messages_sync(self, session_id: str, limit: int) -> list[Message]:
         with self._connect() as conn:
@@ -154,7 +161,11 @@ class SQLiteMemoryStore:
                 (session_id, limit),
             ).fetchall()
         return [
-            Message(role=Role(row["role"]), content=row["content"], metadata=json.loads(row["metadata"]))
+            Message(
+                role=Role(row["role"]),
+                content=row["content"],
+                metadata=json.loads(row["metadata"]),
+            )
             for row in reversed(rows)
         ]
 
@@ -165,10 +176,14 @@ class SQLiteMemoryStore:
     ) -> str:
         memory_id = str(uuid4())
         async with self._lock:
-            await asyncio.to_thread(self._add_semantic_memory_sync, memory_id, text, metadata or {})
+            await asyncio.to_thread(
+                self._add_semantic_memory_sync, memory_id, text, metadata or {}
+            )
         return memory_id
 
-    def _add_semantic_memory_sync(self, memory_id: str, text: str, metadata: dict[str, str]) -> None:
+    def _add_semantic_memory_sync(
+        self, memory_id: str, text: str, metadata: dict[str, str]
+    ) -> None:
         with self._connect() as conn:
             conn.execute(
                 "INSERT INTO semantic_memories (id, text, metadata) VALUES (?, ?, ?)",

@@ -9,4 +9,3 @@ def get_container(request: Request) -> Container:
     """Return the application container."""
 
     return request.app.state.container
-

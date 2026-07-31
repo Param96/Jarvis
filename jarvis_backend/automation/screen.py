@@ -25,4 +25,3 @@ class ScreenCaptureService:
                 raise RuntimeError(stderr.decode(errors="replace").strip())
             return output_path
         raise RuntimeError("No supported screenshot backend found.")
-

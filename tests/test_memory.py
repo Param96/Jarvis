@@ -10,7 +10,9 @@ async def test_memory_round_trip(tmp_path):
     store = SQLiteMemoryStore(tmp_path / "jarvis.sqlite3")
     await store.initialize()
     session = await store.ensure_session()
-    await store.add_message(session.id, Message(role=Role.USER, content="remember blue notebooks"))
+    await store.add_message(
+        session.id, Message(role=Role.USER, content="remember blue notebooks")
+    )
     await store.add_semantic_memory("The user likes blue notebooks.")
 
     recent = await store.recent_messages(session.id)

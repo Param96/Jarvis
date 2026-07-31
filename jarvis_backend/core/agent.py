@@ -3,10 +3,11 @@
 from dataclasses import dataclass
 from jarvis_backend.models.providers import ChatModel
 
+
 @dataclass
 class Agent:
     """An AI persona that can participate in a swarm."""
-    
+
     name: str
     instructions: str
     model: ChatModel

@@ -47,4 +47,3 @@ def create_app() -> FastAPI:
     app.include_router(http_router, prefix="/api")
     app.include_router(websocket_router)
     return app
-

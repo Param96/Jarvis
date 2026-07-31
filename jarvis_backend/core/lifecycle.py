@@ -13,4 +13,3 @@ class Service(ABC):
     @abstractmethod
     async def stop(self) -> None:
         """Stop the service and release resources."""
-

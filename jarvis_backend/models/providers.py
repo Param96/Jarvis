@@ -34,8 +34,7 @@ class DisabledModel:
     async def stream(self, messages: list[Message]) -> AsyncIterator[str]:
         last = next((m.content for m in reversed(messages) if m.role == "user"), "")
         yield (
-            "I am online, but no language model is configured yet. "
-            f"I heard: {last}"
+            "I am online, but no language model is configured yet. " f"I heard: {last}"
         )
 
 
@@ -62,7 +61,9 @@ class OllamaChatModel:
             import httpx
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
+                async with client.stream(
+                    "POST", f"{self.base_url}/api/chat", json=payload
+                ) as response:
                     response.raise_for_status()
                     async for line in response.aiter_lines():
                         if not line:
@@ -79,7 +80,9 @@ class OllamaChatModel:
 class OpenAICompatibleChatModel:
     """OpenAI-compatible chat completions adapter."""
 
-    def __init__(self, base_url: str, api_key: str, model: str, timeout: float = 90.0) -> None:
+    def __init__(
+        self, base_url: str, api_key: str, model: str, timeout: float = 90.0
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model

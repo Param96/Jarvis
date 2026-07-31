@@ -34,4 +34,3 @@ class ToolRegistry:
         except Exception as exc:
             self._logger.exception("tool_execution_failed", extra={"tool": name})
             return ToolResult(name=name, ok=False, output=str(exc))
-
