@@ -1,5 +1,5 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
-from typing import Dict, Any
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from typing import Dict
 import jwt
 import os
 import json

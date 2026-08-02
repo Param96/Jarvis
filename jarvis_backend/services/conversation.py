@@ -5,7 +5,6 @@ import logging
 from jarvis_backend.events.bus import EventBus
 from jarvis_backend.events.types import AssistantState, Event, EventType
 from jarvis_backend.memory.store import MemoryStore
-from jarvis_backend.core.agent import Agent
 from jarvis_backend.services.swarm import SwarmCoordinator
 from jarvis_backend.schemas.conversation import ConversationResponse, Message, Role
 from jarvis_backend.tools.registry import ToolRegistry

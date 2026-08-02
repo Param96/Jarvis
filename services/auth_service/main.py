@@ -10,7 +10,6 @@ from services.auth_service.auth import (
 from services.auth_service.database import engine, get_db, Base
 from services.auth_service.models import User
 from packages.shared_types.schemas import UserCreate, UserResponse, Token
-import uuid
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)

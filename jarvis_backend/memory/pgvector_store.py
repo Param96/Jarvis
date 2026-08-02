@@ -1,7 +1,6 @@
 """PostgreSQL pgvector implementation of the memory store."""
 
 import json
-from typing import Any
 from uuid import uuid4
 
 import asyncpg
